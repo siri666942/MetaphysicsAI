@@ -8,7 +8,7 @@ const DEV_API_BASE = "http://localhost:5000/api";
 
 // 生产环境：Zeabur 后端地址
 // 在 Zeabur Networking 中生成公开域名后替换下面的地址
-const PROD_API_BASE = "https://metaphysicsai.zeabur.app/api";
+const PROD_API_BASE = "https://siri.zeabur.app/api";
 
 // 自动判断环境
 const API_BASE = 
