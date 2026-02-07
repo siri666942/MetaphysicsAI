@@ -2,11 +2,7 @@
  * AI+玄学 · 玄明子命理咨询 —— 前端脚本
  */
 
-// API 地址配置
-// 方式1：如果前后端同域，使用相对路径（推荐）
-// 方式2：在 index.html 中添加 <script>window.API_BASE = 'https://your-backend.com/api'</script>
-// 方式3：开发环境默认使用 localhost
-const API_BASE = window.API_BASE || "http://localhost:5000/api";
+const API_BASE = "http://localhost:5000/api";
 
 // ============ 状态管理 ============
 let currentConversationId = null;
