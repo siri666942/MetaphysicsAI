@@ -208,6 +208,8 @@ def chat(conversation_id):
 
 
 if __name__ == "__main__":
+    # Zeabur / Railway 等平台通过 PORT 环境变量指定端口
+    port = int(os.getenv("PORT", 5000))
     print("🔮 AI+玄学 后端服务启动中...")
-    print("📡 API 地址: http://localhost:5000")
-    app.run(debug=True, port=5000)
+    print(f"📡 API 地址: http://localhost:{port}")
+    app.run(debug=True, port=port, host="0.0.0.0")
