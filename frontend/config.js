@@ -8,7 +8,7 @@ const DEV_API_BASE = "http://localhost:5000/api";
 
 // 生产环境：Railway 后端地址（请替换为你的实际域名）
 // 在 Railway Settings -> Networking -> Public Domain 中获取
-const PROD_API_BASE = "metaphysicsai-production.up.railway.app";
+const PROD_API_BASE = "https://metaphysicsai-production.up.railway.app/api";
 
 // 自动判断环境
 const API_BASE = 
