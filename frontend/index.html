@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>玄明子 · AI命理咨询</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Markdown 渲染 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- ====== 侧边栏 ====== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🔮</span>
+                    <span class="logo-text">玄明子</span>
+                </div>
+                <button class="new-chat-btn" id="newChatBtn" title="新建对话">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    新建对话
+                </button>
+            </div>
+            <div class="conversation-list" id="conversationList">
+                <!-- 对话列表将由 JS 动态渲染 -->
+            </div>
+            <div class="sidebar-footer">
+                <div class="sidebar-footer-text">AI+玄学 · 命由天定 运由己造</div>
+            </div>
+        </aside>
+
+        <!-- ====== 主内容区 ====== -->
+        <main class="main-content">
+            <!-- 移动端菜单按钮 -->
+            <button class="menu-toggle" id="menuToggle">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+
+            <!-- 欢迎页 / 聊天区 -->
+            <div class="chat-area" id="chatArea">
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-icon">🔮</div>
+                    <h1>玄明子 · AI命理咨询</h1>
+                    <p>精通八字命理、紫微斗数、梅花易数、风水姓名</p>
+                    <div class="welcome-hints">
+                        <div class="hint-card" onclick="sendQuickMessage('帮我看看八字，我是1995年农历六月十五午时出生的，男')">
+                            <div class="hint-icon">📅</div>
+                            <div class="hint-text">八字命理分析</div>
+                        </div>
+                        <div class="hint-card" onclick="sendQuickMessage('请帮我用梅花易数占一卦，数字是 3、7、2')">
+                            <div class="hint-icon">🎋</div>
+                            <div class="hint-text">梅花易数起卦</div>
+                        </div>
+                        <div class="hint-card" onclick="sendQuickMessage('我叫王思远，男，想请您帮我分析一下名字')">
+                            <div class="hint-icon">✍️</div>
+                            <div class="hint-text">姓名五行分析</div>
+                        </div>
+                        <div class="hint-card" onclick="sendQuickMessage('2025年我想搬家，帮我看看几月份比较好？我属猪的')">
+                            <div class="hint-icon">🏠</div>
+                            <div class="hint-text">择日择吉咨询</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="messages-container" id="messagesContainer" style="display:none;">
+                    <!-- 消息将由 JS 动态渲染 -->
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea
+                        id="messageInput"
+                        placeholder="请输入您的问题..."
+                        rows="1"
+                        maxlength="2000"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" title="发送">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-hint">命理分析仅供参考，重要决策请综合考量</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 遮罩层（移动端侧边栏） -->
+    <div class="overlay" id="overlay"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
