@@ -1,14 +1,14 @@
 /**
  * 前端配置文件
- * 部署到生产环境前，请修改这里的 API_BASE 为你的 Railway 后端地址
+ * 部署到生产环境前，请修改 PROD_API_BASE 为你的后端公开域名
  */
 
 // 开发环境：本地后端
 const DEV_API_BASE = "http://localhost:5000/api";
 
-// 生产环境：Railway 后端地址
-// 在 Railway Settings -> Networking -> Public Domain 中获取
-const PROD_API_BASE = "https://metaphysicsai-production.up.railway.app/api";
+// 生产环境：Zeabur 后端地址
+// 在 Zeabur Networking 中生成公开域名后替换下面的地址
+const PROD_API_BASE = "https://metaphysicsai.zeabur.app/api";
 
 // 自动判断环境
 const API_BASE = 
