@@ -2,7 +2,7 @@
  * AI+玄学 · 玄明子命理咨询 —— 前端脚本
  */
 
-const API_BASE = "http://localhost:5000/api";
+// API_BASE 在 config.js 中定义（需要在 index.html 中先引入 config.js）
 
 // ============ 状态管理 ============
 let currentConversationId = null;
