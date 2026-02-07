@@ -110,6 +110,16 @@ def delete_conversation(conversation_id):
     return jsonify({"success": True})
 
 
+@app.route("/api/conversations/<conversation_id>/title", methods=["PUT"])
+def update_title(conversation_id):
+    """更新对话标题"""
+    data = request.get_json()
+    title = data.get("title", "").strip()
+    if title:
+        db.update_conversation_title(conversation_id, title)
+    return jsonify({"success": True})
+
+
 @app.route("/api/conversations/<conversation_id>/messages", methods=["GET"])
 def get_messages(conversation_id):
     """获取对话的所有消息"""
