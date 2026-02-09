@@ -176,6 +176,27 @@ function setupEventListeners() {
         }
     });
 
+    // ---- 密码可见性切换（眼睛按钮） ----
+    // querySelectorAll 返回 NodeList，可以用 forEach 遍历（Java 中类似 List.forEach）
+    document.querySelectorAll(".password-toggle").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const targetId = btn.getAttribute("data-target");
+            const input = document.getElementById(targetId);
+            const eyeOff = btn.querySelector(".eye-off");
+            const eyeOn = btn.querySelector(".eye-on");
+
+            if (input.type === "password") {
+                input.type = "text";           // 切换为明文
+                eyeOff.style.display = "none";
+                eyeOn.style.display = "block";
+            } else {
+                input.type = "password";       // 切换为密文
+                eyeOff.style.display = "block";
+                eyeOn.style.display = "none";
+            }
+        });
+    });
+
     // ---- 切换登录/注册 ----
     document.getElementById("switchToRegister").addEventListener("click", () => {
         document.getElementById("loginForm").style.display = "none";

@@ -7,8 +7,11 @@ import os
 import uuid
 from datetime import datetime
 
-# 注意：Python 中用 os.path.join 拼接路径，不像 Java 用 File 对象
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat_history.db")
+# 支持通过环境变量指定数据库路径，便于 Zeabur 等平台挂载 Volume 做持久化
+# 若未设置，则使用 backend 目录下的 chat_history.db
+DB_PATH = os.getenv("DATABASE_PATH") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "chat_history.db"
+)
 
 
 def get_connection():

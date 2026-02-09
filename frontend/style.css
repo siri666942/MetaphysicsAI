@@ -134,6 +134,7 @@ html, body {
     font-size: 14px;
     outline: none;
     transition: border-color var(--transition);
+    width: 100%;
 }
 
 .auth-form input:focus {
@@ -143,6 +144,46 @@ html, body {
 
 .auth-form input::placeholder {
     color: var(--text-muted);
+}
+
+/* ---------- 密码输入框容器（带眼睛图标） ---------- */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-wrapper input {
+    padding-right: 44px; /* 为眼睛按钮留出空间 */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border-radius: 4px;
+    transition: color var(--transition);
+}
+
+.password-toggle:hover {
+    color: var(--accent-hover);
+}
+
+.password-toggle .eye-icon {
+    display: block;
+}
+
+.password-toggle .eye-icon[style*="display:none"],
+.password-toggle .eye-icon[style*="display: none"] {
+    display: none !important;
 }
 
 .auth-error {
