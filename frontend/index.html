@@ -9,7 +9,39 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-    <div class="app-container">
+    <!-- ====== 登录/注册浮层 ====== -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-card">
+            <div class="auth-logo">🔮</div>
+            <h2 class="auth-title">玄明子 · AI命理咨询</h2>
+            <p class="auth-subtitle">命由天定，运由己造</p>
+
+            <!-- 登录表单 -->
+            <form class="auth-form" id="loginForm">
+                <input type="text" id="loginUsername" placeholder="用户名" autocomplete="username" required>
+                <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password" required>
+                <div class="auth-error" id="loginError"></div>
+                <button type="submit" class="auth-btn">登 录</button>
+            </form>
+
+            <!-- 注册表单（默认隐藏） -->
+            <form class="auth-form" id="registerForm" style="display:none;">
+                <input type="text" id="regUsername" placeholder="用户名（2-20 字符）" autocomplete="username" required>
+                <input type="password" id="regPassword" placeholder="密码（至少 6 位）" autocomplete="new-password" required>
+                <input type="password" id="regPasswordConfirm" placeholder="确认密码" autocomplete="new-password" required>
+                <div class="auth-error" id="regError"></div>
+                <button type="submit" class="auth-btn">注 册</button>
+            </form>
+
+            <div class="auth-switch">
+                <span id="switchToRegister">还没有账号？<strong>立即注册</strong></span>
+                <span id="switchToLogin" style="display:none;">已有账号？<strong>返回登录</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== 主应用 ====== -->
+    <div class="app-container" id="appContainer" style="display:none;">
         <!-- ====== 侧边栏 ====== -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -30,6 +62,11 @@
             </div>
             <div class="sidebar-footer">
                 <div class="sidebar-footer-text">AI+玄学 · 命由天定 运由己造</div>
+                <div class="sidebar-donate" id="donateBtn">☕ 请主包喝杯奶茶</div>
+                <div class="sidebar-user" id="sidebarUser">
+                    <span class="user-name" id="currentUserName"></span>
+                    <button class="logout-btn" id="logoutBtn" title="退出登录">退出</button>
+                </div>
             </div>
         </aside>
 
@@ -49,7 +86,7 @@
                 <div class="welcome-screen" id="welcomeScreen">
                     <div class="welcome-icon">🔮</div>
                     <h1>玄明子 · AI命理咨询</h1>
-                    <p>精通八字命理、紫微斗数、梅花易数、风水姓名</p>
+                    <p>精通八字命理、紫微斗数、梅花易数、六爻占卜、风水姓名</p>
                     <div class="welcome-hints">
                         <div class="hint-card" onclick="startTopicChat('bazi')">
                             <div class="hint-icon">📅</div>
@@ -58,6 +95,10 @@
                         <div class="hint-card" onclick="startTopicChat('meihua')">
                             <div class="hint-icon">🎋</div>
                             <div class="hint-text">梅花易数起卦</div>
+                        </div>
+                        <div class="hint-card" onclick="startTopicChat('liuyao')">
+                            <div class="hint-icon">🔯</div>
+                            <div class="hint-text">六爻占卜</div>
                         </div>
                         <div class="hint-card" onclick="startTopicChat('name')">
                             <div class="hint-icon">✍️</div>
@@ -96,8 +137,20 @@
         </main>
     </div>
 
-    <!-- 遮罩层（移动端侧边栏） -->
+    <!-- ====== 遮罩层（移动端侧边栏） ====== -->
     <div class="overlay" id="overlay"></div>
+
+    <!-- ====== 打赏弹窗 ====== -->
+    <div class="donate-modal" id="donateModal">
+        <div class="donate-modal-backdrop" id="donateBackdrop"></div>
+        <div class="donate-modal-content">
+            <button class="donate-close" id="donateClose">&times;</button>
+            <div class="donate-title">☕ 请主包喝杯奶茶</div>
+            <div class="donate-subtitle">随喜赞赏，你的支持是最大的鼓励</div>
+            <img class="donate-qrcode" src="assets/qrcode.png" alt="微信赞赏码">
+            <div class="donate-hint">微信扫码 · 金额随意</div>
+        </div>
+    </div>
 
     <!-- 配置文件（必须在 script.js 之前引入） -->
     <script src="config.js"></script>

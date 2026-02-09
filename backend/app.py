@@ -7,16 +7,28 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from openai import OpenAI
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+from datetime import datetime, timedelta
 import os
 import json
+import jwt  # PyJWT —— 注意：Python 里 import 名是 jwt，包名是 PyJWT
 
 import database as db
+from divination import (
+    get_time_context, compute_bazi,
+    compute_meihua, compute_meihua_by_time,
+    compute_liuyao, compute_liuyao_by_time,
+)
 
 # 加载 .env（从上级目录）
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"))
 
 app = Flask(__name__)
 CORS(app)  # 允许前端跨域请求
+
+# JWT 密钥（生产环境请通过 .env 设置 JWT_SECRET）
+JWT_SECRET = os.getenv("JWT_SECRET", "siri-universe-secret-key-change-me")
 
 # 初始化 OpenAI 兼容客户端（SophNet）
 client = OpenAI(
@@ -57,6 +69,7 @@ SYSTEM_PROMPT = """# 角色：玄明子 —— 资深命理咨询师
 - 逐步展开分析，先总论后分论
 - 分析维度包括但不限于：性格特质、事业财运、感情婚姻、健康运势
 - 结合当前大运和流年给出时效性建议
+- **重要**：如果系统提供了排盘数据（如【八字排盘结果】【梅花易数排盘】【六爻排卦】），请直接基于该数据进行解读，这些数据经过精确计算，比自行推算更准确
 
 ### 第三步：建议指导
 - 根据分析结果给出具体可操作的趋吉避凶建议
@@ -79,6 +92,11 @@ SYSTEM_PROMPT = """# 角色：玄明子 —— 资深命理咨询师
 - 适时使用比喻和生活化的例子帮助理解
 - 用 Markdown 格式组织较长的分析内容，使排版清晰
 
+## 特别说明（必须严格遵守）
+- 如果用户问到"siri是谁"、"谁是siri"、"你知道siri吗"、"siri"等关于 Siri 的问题，你**必须**这样回答：
+  「Siri 是「Siri 宇宙」的创世者与主理人，也是这个玄学世界的缔造者。欢迎来到 Siri 的世界，一起探索命理与玄机的奥秘~」
+  **绝对不要**提及苹果公司的 Siri 语音助手。在这个世界里，Siri 就是玄学宇宙的主人。
+
 ## 开场白
 当用户第一次开始对话时，请用以下风格打招呼：
 "你好呀，我是玄明子，一位命理咨询师。无论是八字命理、紫微斗数、起卦占卜，还是风水姓名、择日择吉，都可以和我聊聊。请问今天想了解什么呢？"
@@ -86,33 +104,146 @@ SYSTEM_PROMPT = """# 角色：玄明子 —— 资深命理咨询师
 
 
 # ============================================================
-#  API 路由
+#  认证相关（JWT）
+# ============================================================
+
+def generate_token(user_id, username):
+    """生成 JWT Token"""
+    payload = {
+        'user_id': user_id,
+        'username': username,
+        'exp': datetime.utcnow() + timedelta(days=7),
+        'iat': datetime.utcnow(),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+
+def verify_token(token):
+    """验证 JWT Token，返回 payload 或 None"""
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
+
+
+def login_required(f):
+    """装饰器：要求登录（检查 Authorization 头中的 Bearer Token）"""
+    # Python 装饰器类似 Java 的注解(@Annotation)，但更灵活——它实际上是高阶函数
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header.replace('Bearer ', '') if auth_header.startswith('Bearer ') else ''
+        if not token:
+            return jsonify({'error': '请先登录'}), 401
+        payload = verify_token(token)
+        if not payload:
+            return jsonify({'error': '登录已过期，请重新登录'}), 401
+        request.user_id = payload['user_id']
+        request.username = payload['username']
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ============================================================
+#  认证 API
+# ============================================================
+
+@app.route("/api/auth/register", methods=["POST"])
+def register():
+    """用户注册"""
+    data = request.get_json()
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if not username or not password:
+        return jsonify({"error": "用户名和密码不能为空"}), 400
+    if len(username) < 2 or len(username) > 20:
+        return jsonify({"error": "用户名长度应为 2-20 个字符"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "密码长度至少 6 位"}), 400
+
+    # 检查用户名是否已存在
+    if db.get_user_by_username(username):
+        return jsonify({"error": "该用户名已被注册"}), 409
+
+    password_hash = generate_password_hash(password)
+    user = db.create_user(username, password_hash)
+    token = generate_token(user['id'], user['username'])
+
+    return jsonify({
+        "token": token,
+        "user": {"id": user['id'], "username": user['username']},
+    }), 201
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    """用户登录"""
+    data = request.get_json()
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if not username or not password:
+        return jsonify({"error": "用户名和密码不能为空"}), 400
+
+    user = db.get_user_by_username(username)
+    if not user or not check_password_hash(user['password_hash'], password):
+        return jsonify({"error": "用户名或密码错误"}), 401
+
+    token = generate_token(user['id'], user['username'])
+
+    return jsonify({
+        "token": token,
+        "user": {"id": user['id'], "username": user['username']},
+    })
+
+
+@app.route("/api/auth/me", methods=["GET"])
+@login_required
+def auth_me():
+    """获取当前登录用户信息（顺便验证 token 有效性）"""
+    user = db.get_user_by_id(request.user_id)
+    if not user:
+        return jsonify({"error": "用户不存在"}), 404
+    return jsonify({"id": user['id'], "username": user['username']})
+
+
+# ============================================================
+#  对话 API（需要登录）
 # ============================================================
 
 @app.route("/api/conversations", methods=["GET"])
+@login_required
 def list_conversations():
-    """获取所有对话列表"""
-    conversations = db.get_all_conversations()
+    """获取当前用户的所有对话列表"""
+    conversations = db.get_all_conversations(user_id=request.user_id)
     return jsonify(conversations)
 
 
 @app.route("/api/conversations", methods=["POST"])
+@login_required
 def create_conversation():
-    """创建新对话"""
-    conv = db.create_conversation()
+    """创建新对话（关联当前用户）"""
+    conv = db.create_conversation(user_id=request.user_id)
     return jsonify(conv), 201
 
 
 @app.route("/api/conversations/<conversation_id>", methods=["DELETE"])
+@login_required
 def delete_conversation(conversation_id):
     """删除对话"""
+    if not db.conversation_belongs_to_user(conversation_id, request.user_id):
+        return jsonify({"error": "无权操作"}), 403
     db.delete_conversation(conversation_id)
     return jsonify({"success": True})
 
 
 @app.route("/api/conversations/<conversation_id>/title", methods=["PUT"])
+@login_required
 def update_title(conversation_id):
     """更新对话标题"""
+    if not db.conversation_belongs_to_user(conversation_id, request.user_id):
+        return jsonify({"error": "无权操作"}), 403
     data = request.get_json()
     title = data.get("title", "").strip()
     if title:
@@ -121,15 +252,21 @@ def update_title(conversation_id):
 
 
 @app.route("/api/conversations/<conversation_id>/messages", methods=["GET"])
+@login_required
 def get_messages(conversation_id):
     """获取对话的所有消息"""
+    if not db.conversation_belongs_to_user(conversation_id, request.user_id):
+        return jsonify({"error": "无权操作"}), 403
     messages = db.get_conversation_messages(conversation_id)
     return jsonify(messages)
 
 
 @app.route("/api/conversations/<conversation_id>/save-partial", methods=["POST"])
+@login_required
 def save_partial(conversation_id):
     """保存用户中止生成后的不完整 AI 回复"""
+    if not db.conversation_belongs_to_user(conversation_id, request.user_id):
+        return jsonify({"error": "无权操作"}), 403
     data = request.get_json()
     content = data.get("content", "").strip()
 
@@ -147,11 +284,15 @@ def save_partial(conversation_id):
 
 
 @app.route("/api/conversations/<conversation_id>/chat", methods=["POST"])
+@login_required
 def chat(conversation_id):
     """
     发送消息并获取 AI 流式回复
     使用 SSE (Server-Sent Events) 实现流式输出
     """
+    if not db.conversation_belongs_to_user(conversation_id, request.user_id):
+        return jsonify({"error": "无权操作"}), 403
+
     data = request.get_json()
     user_message = data.get("message", "").strip()
 
@@ -164,8 +305,12 @@ def chat(conversation_id):
     # 获取该对话的历史消息，构建上下文
     history = db.get_conversation_messages(conversation_id)
 
+    # ---- 动态构建系统提示词（注入当前时间上下文）----
+    time_ctx = get_time_context()
+    system_content = SYSTEM_PROMPT + "\n\n" + time_ctx
+
     # 构建发送给大模型的消息列表
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": system_content}]
     for msg in history:
         messages.append({"role": msg["role"], "content": msg["content"]})
 
@@ -216,6 +361,64 @@ def chat(conversation_id):
         },
     )
 
+
+# ============================================================
+#  占卜计算 API（供前端调用或测试）
+# ============================================================
+
+@app.route("/api/divination/bazi", methods=["POST"])
+@login_required
+def api_bazi():
+    """八字排盘"""
+    data = request.get_json()
+    result = compute_bazi(
+        year=data.get("year", 2000),
+        month=data.get("month", 1),
+        day=data.get("day", 1),
+        hour=data.get("hour", 12),
+        minute=data.get("minute", 0),
+        is_male=data.get("is_male", True),
+        is_solar=data.get("is_solar", True),
+    )
+    return jsonify({"result": result})
+
+
+@app.route("/api/divination/meihua", methods=["POST"])
+@login_required
+def api_meihua():
+    """梅花易数起卦"""
+    data = request.get_json()
+    nums = data.get("numbers", [])
+    if len(nums) >= 3:
+        result = compute_meihua(nums[0], nums[1], nums[2])
+    else:
+        result = compute_meihua_by_time()
+    return jsonify({"result": result})
+
+
+@app.route("/api/divination/liuyao", methods=["POST"])
+@login_required
+def api_liuyao():
+    """六爻排卦"""
+    data = request.get_json()
+    nums = data.get("numbers", [])
+    if len(nums) >= 3:
+        result = compute_liuyao(nums[0], nums[1], nums[2])
+    else:
+        result = compute_liuyao_by_time()
+    return jsonify({"result": result})
+
+
+@app.route("/api/divination/time-context", methods=["GET"])
+@login_required
+def api_time_context():
+    """获取当前时间上下文（测试用）"""
+    return jsonify({"result": get_time_context()})
+
+
+# ============================================================
+#  启动
+# ============================================================
 
 if __name__ == "__main__":
     # Zeabur / Railway 等平台通过 PORT 环境变量指定端口

@@ -10,6 +10,8 @@ let isStreaming = false; // 是否正在接收 AI 流式回复
 let abortController = null; // 用于中止流式请求 —— 类似 Java 的 Future.cancel()，JS 用 AbortController
 
 // ============ DOM 元素引用 ============
+const authOverlay = document.getElementById("authOverlay");
+const appContainer = document.getElementById("appContainer");
 const sidebar = document.getElementById("sidebar");
 const menuToggle = document.getElementById("menuToggle");
 const overlay = document.getElementById("overlay");
@@ -20,14 +22,174 @@ const messagesContainer = document.getElementById("messagesContainer");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 
+// ============ Token 管理 ============
+// localStorage 类似 Java 的 SharedPreferences，可持久化键值对
+
+function getToken() { return localStorage.getItem("token"); }
+function setToken(token) { localStorage.setItem("token", token); }
+function clearToken() { localStorage.removeItem("token"); }
+
+function getUsername() { return localStorage.getItem("username"); }
+function setUsername(name) { localStorage.setItem("username", name); }
+function clearUsername() { localStorage.removeItem("username"); }
+
+/**
+ * 带认证的 fetch 封装
+ * 自动在请求头中添加 Bearer Token；如果收到 401，自动跳转登录
+ */
+async function authFetch(url, options = {}) {
+    const token = getToken();
+    if (token) {
+        options.headers = {
+            ...options.headers,
+            Authorization: `Bearer ${token}`,
+        };
+    }
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        clearToken();
+        clearUsername();
+        showAuthOverlay();
+        throw new Error("登录已过期，请重新登录");
+    }
+    return res;
+}
+
 // ============ 初始化 ============
 document.addEventListener("DOMContentLoaded", () => {
-    loadConversations();
     setupEventListeners();
+    checkAuth();
 });
 
+function checkAuth() {
+    const token = getToken();
+    if (!token) {
+        showAuthOverlay();
+    } else {
+        // 验证 token 有效性
+        authFetch(`${API_BASE}/auth/me`)
+            .then((res) => {
+                if (res.ok) {
+                    return res.json();
+                }
+                throw new Error("Token invalid");
+            })
+            .then((user) => {
+                setUsername(user.username);
+                showApp();
+            })
+            .catch(() => {
+                clearToken();
+                clearUsername();
+                showAuthOverlay();
+            });
+    }
+}
+
+function showAuthOverlay() {
+    authOverlay.style.display = "flex";
+    appContainer.style.display = "none";
+}
+
+function showApp() {
+    authOverlay.style.display = "none";
+    appContainer.style.display = "flex";
+    document.getElementById("currentUserName").textContent = getUsername() || "用户";
+    loadConversations();
+}
+
+// ============ 认证事件 ============
+
 function setupEventListeners() {
-    // 发送按钮（生成时变为停止按钮）
+    // ---- 登录 ----
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById("loginError");
+        errEl.textContent = "";
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+
+        if (!username || !password) { errEl.textContent = "请输入用户名和密码"; return; }
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
+            });
+            const data = await res.json();
+            if (!res.ok) { errEl.textContent = data.error || "登录失败"; return; }
+            setToken(data.token);
+            setUsername(data.user.username);
+            showApp();
+        } catch (err) {
+            errEl.textContent = "网络错误，请检查后端是否启动";
+        }
+    });
+
+    // ---- 注册 ----
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById("regError");
+        errEl.textContent = "";
+        const username = document.getElementById("regUsername").value.trim();
+        const password = document.getElementById("regPassword").value;
+        const confirm = document.getElementById("regPasswordConfirm").value;
+
+        if (!username || !password) { errEl.textContent = "请填写所有字段"; return; }
+        if (password !== confirm) { errEl.textContent = "两次密码不一致"; return; }
+        if (password.length < 6) { errEl.textContent = "密码至少 6 位"; return; }
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
+            });
+            const data = await res.json();
+            if (!res.ok) { errEl.textContent = data.error || "注册失败"; return; }
+            setToken(data.token);
+            setUsername(data.user.username);
+            showApp();
+        } catch (err) {
+            errEl.textContent = "网络错误，请检查后端是否启动";
+        }
+    });
+
+    // ---- 切换登录/注册 ----
+    document.getElementById("switchToRegister").addEventListener("click", () => {
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("registerForm").style.display = "flex";
+        document.getElementById("switchToRegister").style.display = "none";
+        document.getElementById("switchToLogin").style.display = "inline";
+    });
+    document.getElementById("switchToLogin").addEventListener("click", () => {
+        document.getElementById("loginForm").style.display = "flex";
+        document.getElementById("registerForm").style.display = "none";
+        document.getElementById("switchToRegister").style.display = "inline";
+        document.getElementById("switchToLogin").style.display = "none";
+    });
+
+    // ---- 退出登录 ----
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+        clearToken();
+        clearUsername();
+        currentConversationId = null;
+        showAuthOverlay();
+    });
+
+    // ---- 打赏弹窗 ----
+    document.getElementById("donateBtn").addEventListener("click", () => {
+        document.getElementById("donateModal").classList.add("active");
+    });
+    document.getElementById("donateClose").addEventListener("click", () => {
+        document.getElementById("donateModal").classList.remove("active");
+    });
+    document.getElementById("donateBackdrop").addEventListener("click", () => {
+        document.getElementById("donateModal").classList.remove("active");
+    });
+
+    // ---- 发送 / 停止按钮 ----
     sendBtn.addEventListener("click", () => {
         if (isStreaming) {
             stopStreaming();
@@ -72,7 +234,7 @@ function autoResize() {
 /** 加载所有对话列表 */
 async function loadConversations() {
     try {
-        const res = await fetch(`${API_BASE}/conversations`);
+        const res = await authFetch(`${API_BASE}/conversations`);
         const conversations = await res.json();
         renderConversationList(conversations);
     } catch (err) {
@@ -111,7 +273,7 @@ function renderConversationList(conversations) {
 /** 创建新对话 */
 async function createNewConversation() {
     try {
-        const res = await fetch(`${API_BASE}/conversations`, { method: "POST" });
+        const res = await authFetch(`${API_BASE}/conversations`, { method: "POST" });
         const conv = await res.json();
         currentConversationId = conv.id;
         await loadConversations();
@@ -134,7 +296,7 @@ async function switchConversation(convId) {
     await loadConversations(); // 刷新列表高亮
 
     try {
-        const res = await fetch(`${API_BASE}/conversations/${convId}/messages`);
+        const res = await authFetch(`${API_BASE}/conversations/${convId}/messages`);
         const messages = await res.json();
         showChatView(messages);
     } catch (err) {
@@ -151,7 +313,7 @@ async function deleteConversation(convId) {
     if (!confirm("确定要删除这个对话吗？")) return;
 
     try {
-        await fetch(`${API_BASE}/conversations/${convId}`, { method: "DELETE" });
+        await authFetch(`${API_BASE}/conversations/${convId}`, { method: "DELETE" });
 
         if (convId === currentConversationId) {
             currentConversationId = null;
@@ -192,7 +354,7 @@ async function sendMessage() {
 
     // 如果没有当前对话，先创建一个
     if (!currentConversationId) {
-        const res = await fetch(`${API_BASE}/conversations`, { method: "POST" });
+        const res = await authFetch(`${API_BASE}/conversations`, { method: "POST" });
         const conv = await res.json();
         currentConversationId = conv.id;
         showChatView([]);
@@ -220,7 +382,7 @@ async function sendMessage() {
 
     try {
         // 使用 SSE 接收流式回复
-        const response = await fetch(
+        const response = await authFetch(
             `${API_BASE}/conversations/${currentConversationId}/chat`,
             {
                 method: "POST",
@@ -282,7 +444,9 @@ async function sendMessage() {
             }
         } else {
             console.error("请求失败:", err);
-            updateMessageContent(aiMsgEl, "网络请求失败，请检查后端服务是否启动。");
+            if (!err.message.includes("登录已过期")) {
+                updateMessageContent(aiMsgEl, "网络请求失败，请检查后端服务是否启动。");
+            }
         }
     } finally {
         isStreaming = false;
@@ -324,7 +488,7 @@ function setSendBtnMode(mode) {
 /** 通知后端保存用户中止后的不完整回复 */
 async function savePartialResponse(conversationId, content) {
     try {
-        await fetch(`${API_BASE}/conversations/${conversationId}/save-partial`, {
+        await authFetch(`${API_BASE}/conversations/${conversationId}/save-partial`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content }),
@@ -372,6 +536,26 @@ const TOPIC_GREETINGS = {
 
 请告诉我你想问什么，以及选择哪种起卦方式吧～`
     },
+    liuyao: {
+        title: "六爻占卜",
+        message: `你好呀！我是玄明子，很高兴为你进行**六爻占卜**。
+
+六爻占卜源自《周易》，是中国传统占卜术中最为严谨精密的方法之一，尤其擅长预测具体事件的吉凶走向。
+
+**起卦方式：**
+
+**方式一：报数起卦（推荐）**
+- 请随意说出 **三个数字**（1-999 之间均可），心中默念你要问的事情
+
+**方式二：时间起卦**
+- 告诉我你想问的事情，我用当前时间为你起卦
+
+> 💡 起卦要领：心诚则灵。起卦前请先静心片刻，心中专注于你想问的那一件事，然后报出三个数字。
+>
+> 比如："我想问最近的感情运势，数字是 7、3、5"
+
+请告诉我你想问什么，以及你的三个数字吧～`
+    },
     name: {
         title: "姓名五行分析",
         message: `你好呀！我是玄明子，很高兴为你进行**姓名五行分析**。
@@ -416,7 +600,7 @@ const TOPIC_GREETINGS = {
 
 /**
  * 话题引导入口 —— 点击卡片后由 AI 先开口引导用户
- * @param {string} topic - 话题 key（bazi / meihua / name / zeday）
+ * @param {string} topic - 话题 key（bazi / meihua / liuyao / name / zeday）
  */
 async function startTopicChat(topic) {
     const topicInfo = TOPIC_GREETINGS[topic];
@@ -424,7 +608,7 @@ async function startTopicChat(topic) {
 
     // 1. 创建新对话
     try {
-        const res = await fetch(`${API_BASE}/conversations`, { method: "POST" });
+        const res = await authFetch(`${API_BASE}/conversations`, { method: "POST" });
         const conv = await res.json();
         currentConversationId = conv.id;
     } catch (err) {
@@ -440,15 +624,13 @@ async function startTopicChat(topic) {
 
     // 3. 保存 AI 引导消息到后端（持久化）
     try {
-        await fetch(`${API_BASE}/conversations/${currentConversationId}/save-partial`, {
+        await authFetch(`${API_BASE}/conversations/${currentConversationId}/save-partial`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: topicInfo.message }),
         });
         // 用话题名作为对话标题
-        // 标题会在后端 save-partial 中自动处理，但这里没有 user 消息所以不会触发
-        // 直接更新标题
-        await fetch(`${API_BASE}/conversations/${currentConversationId}/title`, {
+        await authFetch(`${API_BASE}/conversations/${currentConversationId}/title`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ title: topicInfo.title }),
