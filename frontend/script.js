@@ -58,8 +58,28 @@ async function authFetch(url, options = {}) {
 // ============ 初始化 ============
 document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
+    fixMobileViewportHeight();   // 修复移动端视口高度
     checkAuth();
 });
+
+/**
+ * 修复移动端浏览器 100vh 包含地址栏/底部导航栏的问题
+ * 通过 JS 获取真实可视高度并设置 CSS 变量 --vh
+ * 对不支持 dvh 的旧浏览器作为兜底方案
+ */
+function fixMobileViewportHeight() {
+    function setVh() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    setVh();
+    // 浏览器地址栏显示/隐藏、键盘弹出都会触发 resize
+    window.addEventListener('resize', setVh);
+    // iOS Safari 特殊处理：滚动时地址栏收起也会改变视口
+    window.addEventListener('orientationchange', () => {
+        setTimeout(setVh, 100);
+    });
+}
 
 function checkAuth() {
     const token = getToken();
