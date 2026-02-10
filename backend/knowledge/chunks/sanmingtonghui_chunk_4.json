@@ -1,0 +1,6 @@
+{
+  "id": "sanmingtonghui_chunk_4",
+  "source": "三命通会",
+  "tags": [],
+  "content": "function applyfilter(topicid) {\n  var x=document.getElementById(\"categoriesform\");\n  var y=document.getElementById(\"filtervalue\");\n  y.value = topicid;\n  x.submit();\n}\n\n登入\n\n中国哲学书电子化计划     \n  中国哲学书电子化计划    维基   \n    简体字版"
+}

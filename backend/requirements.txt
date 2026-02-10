@@ -5,3 +5,7 @@ python-dotenv>=1.0
 gunicorn>=22.0
 lunar_python>=1.4
 PyJWT>=2.0
+requests>=2.28
+beautifulsoup4>=4.11
+numpy>=1.20.0
+sentence-transformers>=2.2.0

@@ -1,7 +1,8 @@
-# 1. 启动后端（端口 5000）
+# 1. 后端（端口 5000）
 cd backend
+pip install -r requirements.txt
 python app.py
 
-# 2. 启动前端（端口 3000）
+# 2. 前端（端口 3000）
 cd frontend
 python -m http.server 3000

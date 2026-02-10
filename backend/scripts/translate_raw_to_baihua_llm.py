@@ -7,6 +7,11 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+
+# 无缓冲输出，便于后台/长时间运行时看到进度
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
 import html
 import json
 import os
@@ -144,7 +149,7 @@ async def translate_one(client, segment: str, sem: asyncio.Semaphore) -> str:
         for attempt in range(3):
             try:
                 resp = await client.chat.completions.create(
-                    model=os.getenv("SOPHNET_MODEL", "DeepSeek-v3"),
+                    model=os.getenv("SOPHNET_MODEL", "DeepSeek-V3.2-Exp"),
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": "将以下文言段落译成现代汉语白话，只输出译文，不要重复原文：\n\n" + segment},

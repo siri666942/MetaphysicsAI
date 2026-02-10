@@ -8,7 +8,7 @@
 
 - **必选**：`SOPHNET_API_KEY` 或 `OPENAI_API_KEY`
 - **可选**：`SOPHNET_BASE_URL` / `OPENAI_BASE_URL`（不设则用 OpenAI 默认）
-- **可选**：`SOPHNET_MODEL`（默认 `DeepSeek-v3`）
+- **可选**：`SOPHNET_MODEL`（默认 `DeepSeek-V3.2-Exp`）
 
 `.env` 放在项目根或 `backend/` 下即可，脚本会自动加载。
 

@@ -1,0 +1,43 @@
+{
+  "description": "命理知识库待抓取/导入的书籍列表。url 填公开可访问的全文页；local_path 填本地文件路径（优先）。仅使用您有权使用的来源。",
+  "output_dir": "raw",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
+  },
+  "books": [
+    {
+      "id": "yuanhaiziping",
+      "name": "渊海子平",
+      "url": "https://ctext.org/wiki.pl?if=gb&chapter=296619&remap=gb",
+      "urls": [],
+      "local_path": "",
+      "notes": "中国哲学书电子化计划 ctext 单页"
+    },
+    {
+      "id": "ditiansui",
+      "name": "滴天髓",
+      "url": "",
+      "urls": [],
+      "local_path": "",
+      "notes": "ctext 暂无；可填其他公开页或 local_path"
+    },
+    {
+      "id": "sanmingtonghui",
+      "name": "三命通会",
+      "url": "https://ctext.org/wiki.pl?if=gb&chapter=926860&remap=gb",
+      "urls": [],
+      "local_path": "",
+      "notes": "ctext 卷一示例"
+    },
+    {
+      "id": "zipingzhenquan",
+      "name": "子平真诠评注",
+      "url": "https://ctext.org/wiki.pl?if=gb&chapter=974137&remap=gb",
+      "urls": [],
+      "local_path": "",
+      "notes": "ctext 单页"
+    }
+  ]
+}
