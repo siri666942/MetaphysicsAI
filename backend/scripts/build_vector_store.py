@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
 将 knowledge/chunks 下的白话文 chunk（*baihua*.json）向量化，
-保存为 knowledge/vector_store/embeddings.npy 与 meta.json，
-供 rag.retrieve() 做语义检索。首次运行或白话 chunk 更新后执行一次即可。
-不依赖 Chroma，兼容 Python 3.14。
+保存为 knowledge/vector_store/embeddings.npy、meta.json、vocab.json，
+供 rag.retrieve() 做语义检索。
+
+使用字符级 n-gram TF-IDF，纯 Python + numpy 实现，
+不依赖 sentence-transformers / torch，兼容 Python 3.14 且内存友好。
+首次运行或白话 chunk 更新后执行一次即可。
 """
 
 import os
@@ -18,8 +21,6 @@ EMBEDDINGS_FILE = "embeddings.npy"
 META_FILE = "meta.json"
 
 sys.path.insert(0, BACKEND_DIR)
-
-from embedding_utils import embed_texts
 
 
 def load_baihua_chunks():
@@ -65,15 +66,35 @@ def main():
         sources.append(source)
         contents.append(content)
 
-    print(f"共 {len(contents)} 条，正在向量化（首次会下载模型）...")
-    embeddings = embed_texts(contents)
+    print(f"共 {len(contents)} 条，正在构建词汇表 ...")
+    from embedding_utils import build_vocab, embed_texts
+    build_vocab(contents)
+    print("词汇表构建完成，正在向量化 ...")
+
+    # 分批向量化以节省内存
+    import numpy as np
+    batch_size = 500
+    all_embeddings = []
+    for start in range(0, len(contents), batch_size):
+        batch = contents[start:start + batch_size]
+        embs = embed_texts(batch)
+        all_embeddings.extend(embs)
+        done = min(start + batch_size, len(contents))
+        print(f"  已向量化 {done}/{len(contents)} 条")
 
     os.makedirs(VECTOR_STORE_DIR, exist_ok=True)
-    import numpy as np
-    np.save(os.path.join(VECTOR_STORE_DIR, EMBEDDINGS_FILE), np.array(embeddings, dtype=np.float32))
+    np.save(
+        os.path.join(VECTOR_STORE_DIR, EMBEDDINGS_FILE),
+        np.array(all_embeddings, dtype=np.float32),
+    )
 
-    meta = [{"id": i, "source": s, "content": c} for i, s, c in zip(ids, sources, contents)]
-    with open(os.path.join(VECTOR_STORE_DIR, META_FILE), "w", encoding="utf-8") as f:
+    meta = [
+        {"id": i, "source": s, "content": c}
+        for i, s, c in zip(ids, sources, contents)
+    ]
+    with open(
+        os.path.join(VECTOR_STORE_DIR, META_FILE), "w", encoding="utf-8"
+    ) as f:
         json.dump(meta, f, ensure_ascii=False, indent=0)
 
     print(f"已写入 {len(meta)} 条到 {VECTOR_STORE_DIR}")

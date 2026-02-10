@@ -73,6 +73,27 @@ def extract_ctext_body(text: str, start_markers: list[str]) -> str:
     end_m = re.search(r"\.urnlabel|URN\s*:", text[start:], re.I)
     end = start + end_m.start() if end_m else len(text)
     body = text[start:end]
+    # 不在此处压缩空格，留给 _preprocess_ctext_lines 在拆行后再压缩
+    return body.strip()
+
+
+def _preprocess_ctext_lines(body: str) -> str:
+    """把 ctext 格式的行号标记（如 '756       内容'）拆成独立行，
+    并在《标题》/ 中文章节号前插入双换行，以便 split_into_segments 正常切段。
+    注意：需要在 extract_ctext_body 压缩空格之前调用。"""
+    # ctext 行号格式: 数字 + 多空格 + 正文, 例如 "3       五干属阳"
+    # 在 "多空格+数字+多空格" 处插入换行（保留行号以便后续去除）
+    body = re.sub(r"\s{2,}(\d{1,5})\s{2,}", r"\n\1  ", body)
+    # 去掉行号前缀 "数字  "，只保留正文内容
+    body = re.sub(r"(?m)^\d{1,5}\s+", "", body)
+    # 在 《标题》 前插入双换行（作为段落分隔）
+    body = re.sub(r"\n(?=《[^》]+》)", "\n\n", body)
+    # 在中文章节编号前插入双换行（如 "一、论十干十二支"、"三十一．论正官"）
+    body = re.sub(
+        r"\n(?=[一二三四五六七八九十百]+[、．.]\s*[论附])",
+        "\n\n", body,
+    )
+    # 最后压缩剩余的多空格为单空格
     body = re.sub(r"  +", " ", body)
     return body.strip()
 
@@ -135,7 +156,8 @@ def load_raw_book(raw_name: str, start_markers: list[str]) -> str:
     text = path.read_text(encoding="utf-8", errors="replace")
     text = unescape_and_clean(text)
     if "zipingzhenquan" in raw_name or "yuanhaiziping" in raw_name:
-        return extract_ctext_body(text, start_markers)
+        body = extract_ctext_body(text, start_markers)
+        return _preprocess_ctext_lines(body)
     for m in start_markers:
         i = text.find(m)
         if i != -1:
@@ -143,28 +165,59 @@ def load_raw_book(raw_name: str, start_markers: list[str]) -> str:
     return text
 
 
-async def translate_one(client, segment: str, sem: asyncio.Semaphore) -> str:
-    """调用 LLM 翻译一段，带并发限制与重试。"""
+async def translate_one(
+    client,
+    segment: str,
+    sem: asyncio.Semaphore,
+) -> str:
+    """调用 LLM 翻译一段，带并发限制与重试。
+    使用 httpx.AsyncClient 直接发请求（OpenAI SDK 在 Python 3.14 下会卡死）。"""
+    api_key = os.getenv("SOPHNET_API_KEY") or os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("SOPHNET_BASE_URL") or os.getenv("OPENAI_BASE_URL")
+    model = os.getenv("SOPHNET_MODEL", "DeepSeek-V3.2-Exp")
+
     async with sem:
         for attempt in range(3):
             try:
-                resp = await client.chat.completions.create(
-                    model=os.getenv("SOPHNET_MODEL", "DeepSeek-V3.2-Exp"),
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": "将以下文言段落译成现代汉语白话，只输出译文，不要重复原文：\n\n" + segment},
-                    ],
-                    max_tokens=4096,
-                    temperature=0.2,
+                resp = await client.post(
+                    f"{base_url}/chat/completions",
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {
+                                "role": "user",
+                                "content": (
+                                    "将以下文言段落译成现代汉语白话，"
+                                    "只输出译文，不要重复原文：\n\n"
+                                    + segment
+                                ),
+                            },
+                        ],
+                        "max_tokens": 4096,
+                        "temperature": 0.2,
+                    },
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
                 )
-                choice = resp.choices[0]
-                out = (choice.message.content or "").strip()
+                resp.raise_for_status()
+                data = resp.json()
+                out = (
+                    data["choices"][0]["message"]["content"] or ""
+                ).strip()
                 return out or segment
             except Exception as e:
-                if "429" in str(e) or "rate" in str(e).lower():
+                err_str = str(e)
+                if "429" in err_str or "rate" in err_str.lower():
                     await asyncio.sleep(2 ** attempt + 1)
                     continue
-                raise
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt + 1)
+                    continue
+                print(f"    翻译失败: {err_str[:120]}", file=sys.stderr)
+                return segment
         return segment
 
 
@@ -198,11 +251,10 @@ async def translate_book(
     sem: asyncio.Semaphore,
     limit: int = 0,
 ):
-    """翻译一本书，支持断点续跑。"""
-    from openai import AsyncOpenAI
+    """翻译一本书，支持断点续跑。使用 httpx 替代 OpenAI SDK。"""
+    import httpx
 
     api_key = os.getenv("SOPHNET_API_KEY") or os.getenv("OPENAI_API_KEY")
-    base_url = os.getenv("SOPHNET_BASE_URL") or os.getenv("OPENAI_BASE_URL")
     if not api_key:
         print("错误：请设置环境变量 SOPHNET_API_KEY 或 OPENAI_API_KEY", file=sys.stderr)
         return
@@ -226,7 +278,7 @@ async def translate_book(
         write_baihua(baihua_name, title, results)
         return
 
-    client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+    client = httpx.AsyncClient(timeout=120.0)
 
     async def task(i: int):
         if results[i]:
@@ -246,6 +298,7 @@ async def translate_book(
         if not results[i]:
             results[i] = segments[i]
     save_progress(book_key, results)
+    await client.aclose()
     write_baihua(baihua_name, title, results)
     print(f"  [{title}] 已写入 {baihua_name}")
 
