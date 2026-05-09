@@ -1,0 +1,15 @@
+# 不打进镜像，减小体积、避免把本地秘密带进去
+.git
+.env
+.env.*
+*.pyc
+__pycache__
+*.md
+docs/
+# 保留 backend 依赖表，其余 txt 不打进镜像
+*.txt
+!backend/requirements.txt
+node_modules
+.cursor
+.venv
+venv

@@ -1,0 +1,29 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+
+# Database (contains user data)
+*.db
+*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large generated data (regenerate via backend/scripts/)
+backend/knowledge/vector_store/embeddings.npy
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

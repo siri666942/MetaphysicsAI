@@ -1,0 +1,6 @@
+{
+  "id": "yuanhaiziping_chunk_2",
+  "source": "渊海子平",
+  "tags": [],
+  "content": "#content { height: auto; left: 0; top: 0; bottom: 0; right: 0; margin-bottom: 0px; position: absolute; }\n\nif (top.location != self.location) { top.location = self.location; }"
+}
