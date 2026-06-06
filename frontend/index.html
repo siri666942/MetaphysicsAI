@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-    <title>玄明子 · AI命理咨询</title>
-    <link rel="stylesheet" href="style.css">
+    <title>众生相 · BeingEcho</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+    <link rel="stylesheet" href="style.css?v=4">
     <!-- Markdown 渲染 -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -12,8 +15,8 @@
     <!-- ====== 登录/注册浮层 ====== -->
     <div class="auth-overlay" id="authOverlay">
         <div class="auth-card">
-            <div class="auth-logo">🔮</div>
-            <h2 class="auth-title">玄明子 · AI命理咨询</h2>
+            <div class="auth-logo"><span class="brand-mark">B</span></div>
+            <h2 class="auth-title">众生相 · BeingEcho</h2>
             <p class="auth-subtitle">命由天定，运由己造</p>
 
             <!-- 登录表单 -->
@@ -87,8 +90,8 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <span class="logo-icon">🔮</span>
-                    <span class="logo-text">玄明子</span>
+                    <span class="brand-mark">B</span>
+                    <span class="logo-text">众生相</span>
                 </div>
                 <button class="new-chat-btn" id="newChatBtn" title="新建对话">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -172,9 +175,9 @@
             <!-- 聊天区（命理咨询） -->
             <div class="chat-area view-panel" id="chatArea">
                 <div class="welcome-screen" id="welcomeScreen">
-                    <div class="welcome-icon">🔮</div>
-                    <h1>玄明子 · AI命理咨询</h1>
-                    <p>精通八字命理、紫微斗数、梅花易数、六爻占卜、风水姓名</p>
+                    <div class="welcome-brand"><span class="brand-mark brand-mark-lg">B</span></div>
+                    <h1>众生相</h1>
+                    <p>BeingEcho · 命由天定，运由己造</p>
                     <div class="welcome-hints">
                         <div class="hint-card" onclick="startTopicChat('bazi')">
                             <div class="hint-icon">📅</div>
@@ -240,19 +243,31 @@
 
             <!-- 输入区域 -->
             <div class="input-area">
-                <div class="input-wrapper">
+                <div class="input-card">
                     <textarea
                         id="messageInput"
-                        placeholder="请输入您的问题..."
+                        placeholder="向众生相提问…"
                         rows="1"
                         maxlength="2000"
                     ></textarea>
-                    <button class="send-btn" id="sendBtn" title="发送">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
-                    </button>
+                    <div class="input-toolbar">
+                        <div class="mode-selector">
+                            <label for="modeSelect" class="mode-label">人格</label>
+                            <select id="modeSelect" class="mode-select">
+                                <option value="default">玄明子</option>
+                                <option value="borges">博尔赫斯</option>
+                                <option value="naval">Naval</option>
+                                <option value="pirsig">波西格</option>
+                                <option value="luxun">鲁迅</option>
+                            </select>
+                        </div>
+                        <button class="send-btn" id="sendBtn" title="发送">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="input-hint">命理分析仅供参考，重要决策请综合考量</div>
             </div>
@@ -450,7 +465,7 @@
     <!-- 配置文件（必须在 script.js 之前引入）；?v=2 避免缓存导致快速登陆(s)用不了 -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <script src="config.js?v=2"></script>
-    <script src="script.js?v=3"></script>
+    <script src="script.js?v=4"></script>
     <script src="match.js?v=9"></script>
 </body>
 </html>

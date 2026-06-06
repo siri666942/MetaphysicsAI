@@ -1,5 +1,5 @@
 /**
- * AI+玄学 · 玄明子命理咨询 —— 前端脚本
+ * 众生相 BeingEcho —— 前端脚本
  */
 
 // API_BASE 在 config.js 中定义（需要在 index.html 中先引入 config.js）
@@ -21,6 +21,26 @@ const welcomeScreen = document.getElementById("welcomeScreen");
 const messagesContainer = document.getElementById("messagesContainer");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
+const modeSelect = document.getElementById("modeSelect");
+
+// ============ 人格 mode 持久化 ============
+const VALID_MODES = ["default", "borges", "naval", "pirsig", "luxun"];
+
+function getCurrentMode() {
+    const m = localStorage.getItem("chat_mode");
+    return VALID_MODES.includes(m) ? m : "default";
+}
+
+function setCurrentMode(m) {
+    if (VALID_MODES.includes(m)) localStorage.setItem("chat_mode", m);
+}
+
+if (modeSelect) {
+    modeSelect.value = getCurrentMode();
+    modeSelect.addEventListener("change", (e) => {
+        setCurrentMode(e.target.value);
+    });
+}
 
 // ============ Token 管理 ============
 // localStorage 类似 Java 的 SharedPreferences，可持久化键值对
@@ -506,7 +526,7 @@ async function sendMessage() {
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: text }),
+                body: JSON.stringify({ message: text, mode: getCurrentMode() }),
                 signal: abortController.signal, // 关联 AbortController，允许中途取消
             }
         );
